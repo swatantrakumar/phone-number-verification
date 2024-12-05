@@ -21,7 +21,7 @@ const UserSchema = mongoose.Schema({
     verificationCode:String,
     enabled:{type:Boolean},
     expireAt:Number,
-    mobileVerification:{type:Boolean,default:false},
+    isMobileVerified: { type: Boolean, default: false },
     accountStatus:String,
 });
  
