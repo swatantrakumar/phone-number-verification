@@ -1,0 +1,8 @@
+/.angular/cache
+node_modules/
+dist/
+.scannerwork/
+.vscode/
+# Environment variables
+.env
+prod/
