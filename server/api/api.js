@@ -13,7 +13,7 @@ async function loadApi (){
     app.use(express.json())  
 
     app.use('/auth', authRoutes); // Login route
-    app.use('/auth/mobileVerify', authenticateJWT, AuthController.mobileVerify) // Mobile Number Verification
+    app.use('/mobile', authenticateJWT, authRoutes) // Mobile Number Verification
 
     const PORT = process.env.PORT || 8080
     app.listen(PORT, () => {

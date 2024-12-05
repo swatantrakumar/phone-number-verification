@@ -72,10 +72,41 @@ class AuthController {
         const emailExists = await User.findOne({ email: userId});
         return emailExists;
     }
-    static mobileVerify = async (req,res) =>{
-        console.log(req.body);
-        console.log(req.user);f
-        return res.status(400).send({msg:"OTP send on your Mobile Number!!!"});
+    static sendOpt = async (req,res) => {
+        const payload = req.body;
+
+        const result = await sendOtp("+91"+payload.mobileNumber);
+        // Note: Twilio's Verify API does not support custom expiration times directly.
+        //       Instead, we are storing the OTP sent timestamp and expiration time in the database.
+        //       Before verifying the OTP, we check if the OTP has expired.
+        // TODO: If Twilio updates their API to support custom expiration times, refactor this logic accordingly.
+        if(result.success){
+            const email = req.user.email;
+            const expiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes from now
+            try {
+                await User.updateOne(
+                    { email: email }, 
+                    { $set: { expireAt: expiresAt } },  
+                    { upsert: false }           
+                  ); 
+            } catch (error) {
+                console.log(error);
+            }
+                        
+        }        
+        res.status(result.success ? 200 : 500).send(result);
+    }
+    static verifyOtp = async (req,res) => {
+        const payload = req.body;
+        const email = req.user.email;
+        const user = await User.findOne({ email: email});
+        //
+        if(Date.now() > user.expireAt){
+            res.status(500).send({ success: false, message: 'OTP expired' });
+        }else{
+            const result = await verifyOtp("+91"+payload.mobileNumber, payload.code);          
+            res.status(result.success ? 200 : 500).send(result);
+        }        
     }
 }
 
