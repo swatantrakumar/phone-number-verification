@@ -5,25 +5,27 @@ const secretKey  = process.env.KEY;
 
 class AuthController {
     static signIn = async (req, res) =>  {
-        const payload = req.body;        
+        const payload = JSON.parse(atob(req.body));        
         try {            
             let user = await User.findOne({ email: payload.email });
             if (user) {                
                 if(user.enabled){
                     if (user.validPassword(payload.password)) {                        
                         let token = this.createJwtToken({ email: payload.email });                            
-                        return res.status(200).send({token:token});                        
+                        return res.status(200).send({success:true,token:token,user:user});                        
                     }else {
                         let msg = "Password Entered is not correct";
-                        return res.status(400).send({ message: msg});                        
+                        return res.status(400).send({success:false, message: msg});                        
                     }
                 }else{
                     return res.status(400).send({
+                        success:false,
                         message: "User has not been verified."
                     });
                 }
             }else {
                 return res.status(400).send({
+                    success:false,
                     message: "User not Registered."
                 });
             }
@@ -32,9 +34,9 @@ class AuthController {
         }       
     }    
     static signUp = async (req, res) => {
-        const signUpRequest = req.body;
+        const signUpRequest = JSON.parse(atob(req.body));
         if (await this.userExists(signUpRequest.email.toLowerCase())) {            
-            return res.status(400).send({message: "This Email is already registerd."});            
+            return res.status(400).send({success:false,message: "This Email is already registerd."});            
         }      
 
         // Creating empty user object
@@ -56,9 +58,10 @@ class AuthController {
         // Save newUser object to database
         try {
             await newUser.save();
-            return res.status(200).send({message : "User registered successfully"}); 
+            return res.status(200).send({success:true,message : "User registered successfully"}); 
         } catch (error) {
             return res.status(400).send({
+                success:false,
                 message: "Failed to add user."
             });           
         }      
@@ -69,7 +72,7 @@ class AuthController {
         return token;
     }
     static async userExists(userId){        
-        const emailExists = await User.findOne({ email: userId});
+        const emailExists = await this.getUser(userId);
         return emailExists;
     }
     static sendOpt = async (req,res) => {
@@ -93,12 +96,12 @@ class AuthController {
                 console.log(error);
             }       
         }        
-        res.status(result.success ? 200 : 500).send(result);
+        res.status(200).send(result);
     }
     static verifyOtp = async (req,res) => {
         const payload = req.body;
         const email = req.user.email;
-        const user = await User.findOne({ email: email});
+        const user = await this.getUser(email);
         // Note: Twilio's Verify API does not support custom expiration times directly.
         //       Instead, we are storing the OTP sent timestamp and expiration time in the database.
         //       Before verifying the OTP, we check if the OTP has expired.
@@ -117,9 +120,13 @@ class AuthController {
                 } catch (error) {
                     console.log(error);  
                 } 
-            }         
-            res.status(result.success ? 200 : 500).send(result);
+            }   
+            result.user = await this.getUser(email);      
+            res.status(200).send(result);
         }        
+    }
+    static async getUser(userId){
+        return await User.findOne({ email: userId }).select('name email mobileNumber enabled isMobileVerified')
     }
 }
 
